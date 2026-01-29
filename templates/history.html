@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction History - Heart Disease Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .history-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        .header-section {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .header-section h1 {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .header-section p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .prediction-item {
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        .prediction-item:hover {
+            background: #f0f1ff;
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.2);
+        }
+        .prediction-date {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .result-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .result-positive {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .result-negative {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 0.85em;
+        }
+        .feature-item {
+            background: white;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .feature-label {
+            font-weight: 600;
+            color: #667eea;
+        }
+        .feature-value {
+            color: #333;
+        }
+        .no-data {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        .no-data i {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: #bbb;
+        }
+        .btn-group-custom {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .btn-group-custom a {
+            margin: 0 10px;
+        }
+        .expand-btn {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 0.9em;
+            text-decoration: underline;
+            padding: 0;
+            margin-left: 10px;
+        }
+        .features-collapsed {
+            display: none;
+        }
+        .features-expanded {
+            display: grid;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">❤️ Heart Disease Predictor</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/home">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/predict">Predict</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/history">History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header-section">
+            <h1>Your Prediction History</h1>
+            <p>View all your heart disease risk predictions</p>
+        </div>
+
+        <div class="history-card">
+            {% if predictions|length > 0 %}
+                <h3 class="mb-4">Total Predictions: <span class="badge bg-primary">{{ predictions|length }}</span></h3>
+                
+                {% for pred in predictions %}
+                    <div class="prediction-item">
+                        <div class="prediction-date">
+                            📅 {{ pred.timestamp.strftime('%B %d, %Y at %I:%M %p') }}
+                        </div>
+                        
+                        {% if pred.prediction_result == 1 %}
+                            <span class="result-badge result-positive">⚠️ HIGH RISK - Heart Disease Detected</span>
+                        {% else %}
+                            <span class="result-badge result-negative">✅ LOW RISK - No Heart Disease</span>
+                        {% endif %}
+
+                        <button class="expand-btn" onclick="toggleFeatures(this)">
+                            Show Details ▼
+                        </button>
+
+                        <div class="features-grid features-collapsed" style="display: none;">
+                            <div class="feature-item">
+                                <span class="feature-label">Age:</span>
+                                <span class="feature-value">{{ pred.features.age | int }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Sex:</span>
+                                <span class="feature-value">{{ 'Male' if pred.features.sex == 1 else 'Female' }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Chest Pain:</span>
+                                <span class="feature-value">{{ pred.features.cp | int }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Rest BP:</span>
+                                <span class="feature-value">{{ pred.features.trestbps | int }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Cholesterol:</span>
+                                <span class="feature-value">{{ pred.features.chol | int }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Fasting BS:</span>
+                                <span class="feature-value">{{ 'Yes' if pred.features.fbs == 1 else 'No' }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Rest ECG:</span>
+                                <span class="feature-value">{{ pred.features.restecg | int }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Max HR:</span>
+                                <span class="feature-value">{{ pred.features.thalach | int }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Exang:</span>
+                                <span class="feature-value">{{ 'Yes' if pred.features.exang == 1 else 'No' }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Oldpeak:</span>
+                                <span class="feature-value">{{ pred.features.oldpeak }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Slope:</span>
+                                <span class="feature-value">{{ pred.features.slope | int }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">CA:</span>
+                                <span class="feature-value">{{ pred.features.ca | int }}</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-label">Thal:</span>
+                                <span class="feature-value">{{ pred.features.thal | int }}</span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">
+                    <p><strong>No prediction history yet.</strong></p>
+                    <p>Start by making a prediction on the <a href="/predict" class="text-primary">Predict page</a>.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="btn-group-custom">
+            <a href="/predict" class="btn btn-primary">Make New Prediction</a>
+            <a href="/home" class="btn btn-secondary">Back to Home</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleFeatures(button) {
+            const featuresDiv = button.nextElementSibling;
+            if (featuresDiv.style.display === 'none') {
+                featuresDiv.style.display = 'grid';
+                button.textContent = 'Hide Details ▲';
+            } else {
+                featuresDiv.style.display = 'none';
+                button.textContent = 'Show Details ▼';
+            }
+        }
+    </script>
+</body>
+</html>

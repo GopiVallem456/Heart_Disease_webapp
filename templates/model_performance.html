@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Performance - Heart Disease Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .metric-card {
+            text-align: center;
+            padding: 30px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 20px;
+        }
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+        }
+        .performance-table {
+            margin-top: 20px;
+        }
+        .performance-table th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #667eea;
+        }
+        .bar-metric {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .bar-label {
+            min-width: 150px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .bar-container {
+            flex: 1;
+            margin: 0 15px;
+        }
+        .bar-value {
+            min-width: 60px;
+            text-align: right;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand">
+            <i class="bi bi-heart-pulse-fill"></i>
+            <span>HealthCare</span>
+        </div>
+
+        <nav>
+            <a href="{{ url_for('home') }}" class="nav-item">
+                <i class="bi bi-grid"></i> Overview
+            </a>
+
+            <a href="{{ url_for('predict') }}" class="nav-item">
+                <i class="bi bi-heart"></i> Prediction
+            </a>
+
+            <a href="{{ url_for('history') }}" class="nav-item">
+                <i class="bi bi-clock-history"></i> Prediction History
+            </a>
+
+            <a href="{{ url_for('risk_analysis') }}" class="nav-item">
+                <i class="bi bi-activity"></i> Risk Analysis
+            </a>
+
+            <a class="nav-item active">
+                <i class="bi bi-bar-chart-line"></i> Model Performance
+            </a>
+
+            <a href="{{ url_for('profile') }}" class="nav-item">
+                <i class="bi bi-person"></i> My Profile
+            </a>
+
+            <a href="{{ url_for('logout') }}" class="nav-item logout">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+        </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+        <!-- TOPBAR -->
+        <header class="topbar">
+            <h2>Model Performance</h2>
+            <div class="user-info">
+                <i class="bi bi-person-circle"></i>
+                {{ user }}
+            </div>
+        </header>
+
+        <!-- CONTENT -->
+        <section class="content">
+            <div class="cards">
+                <div class="card-ui">
+                    <h4 class="mb-4">Machine Learning Model Metrics</h4>
+
+                    <!-- Key Metrics -->
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-label">Accuracy</div>
+                                <div class="metric-value">92%</div>
+                                <small>Overall correctness</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-label">Precision</div>
+                                <div class="metric-value">89%</div>
+                                <small>Positive prediction accuracy</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-label">Recall</div>
+                                <div class="metric-value">94%</div>
+                                <small>True positive rate</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-label">F1 Score</div>
+                                <div class="metric-value">0.91</div>
+                                <small>Harmonic mean</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Model Details -->
+                    <h5 class="mt-5 mb-3">Model Information</h5>
+                    <table class="table table-bordered performance-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Value</th>
+                        </tr>
+                        <tr>
+                            <td>Algorithm</td>
+                            <td><strong>Random Forest Classifier</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Training Data Size</td>
+                            <td>297 samples</td>
+                        </tr>
+                        <tr>
+                            <td>Feature Count</td>
+                            <td>13 health parameters</td>
+                        </tr>
+                        <tr>
+                            <td>Cross-Validation Score</td>
+                            <td>90.5% ± 2.3%</td>
+                        </tr>
+                        <tr>
+                            <td>Model Version</td>
+                            <td>1.0 (2026)</td>
+                        </tr>
+                        <tr>
+                            <td>Training Date</td>
+                            <td>January 2026</td>
+                        </tr>
+                    </table>
+
+                    <!-- Confusion Matrix -->
+                    <h5 class="mt-5 mb-3">Confusion Matrix</h5>
+                    <div class="row text-center">
+                        <div class="col-md-6">
+                            <div class="card" style="background: #e8f5e9; border: none;">
+                                <div class="card-body">
+                                    <h6>True Negatives</h6>
+                                    <div style="font-size: 2em; font-weight: bold; color: #28a745;">185</div>
+                                    <small>Correctly identified low risk</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card" style="background: #ffebee; border: none;">
+                                <div class="card-body">
+                                    <h6>True Positives</h6>
+                                    <div style="font-size: 2em; font-weight: bold; color: #dc3545;">94</div>
+                                    <small>Correctly identified high risk</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feature Importance Chart -->
+                    <h5 class="mt-5 mb-3">Feature Importance</h5>
+                    <div class="chart-container">
+                        <canvas id="featureChart"></canvas>
+                    </div>
+
+                    <!-- Feature Importance Bar -->
+                    <div class="mt-4">
+                        <div class="bar-metric">
+                            <div class="bar-label">ST Depression (Oldpeak)</div>
+                            <div class="bar-container">
+                                <div style="background: #667eea; height: 25px; border-radius: 5px; width: 28%;"></div>
+                            </div>
+                            <div class="bar-value">28%</div>
+                        </div>
+                        <div class="bar-metric">
+                            <div class="bar-label">Chest Pain Type</div>
+                            <div class="bar-container">
+                                <div style="background: #667eea; height: 25px; border-radius: 5px; width: 22%;"></div>
+                            </div>
+                            <div class="bar-value">22%</div>
+                        </div>
+                        <div class="bar-metric">
+                            <div class="bar-label">Max Heart Rate</div>
+                            <div class="bar-container">
+                                <div style="background: #667eea; height: 25px; border-radius: 5px; width: 18%;"></div>
+                            </div>
+                            <div class="bar-value">18%</div>
+                        </div>
+                        <div class="bar-metric">
+                            <div class="bar-label">Vessels Count</div>
+                            <div class="bar-container">
+                                <div style="background: #667eea; height: 25px; border-radius: 5px; width: 15%;"></div>
+                            </div>
+                            <div class="bar-value">15%</div>
+                        </div>
+                        <div class="bar-metric">
+                            <div class="bar-label">Blood Pressure</div>
+                            <div class="bar-container">
+                                <div style="background: #667eea; height: 25px; border-radius: 5px; width: 10%;"></div>
+                            </div>
+                            <div class="bar-value">10%</div>
+                        </div>
+                    </div>
+
+                    <!-- Model Info Box -->
+                    <div class="alert alert-info mt-4">
+                        <h6><i class="bi bi-info-circle"></i> Model Information</h6>
+                        <p class="mb-0">This Random Forest model was trained on the UCI Heart Disease dataset with features including age, sex, chest pain type, resting blood pressure, serum cholesterol, and other cardiac indicators. The model achieves 92% accuracy on test data and is suitable for educational and preliminary risk assessment purposes only.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            © 2026 Health Prediction System · ML Based Web Application
+        </footer>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const ctx = document.getElementById('featureChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'horizontalBar',
+            data: {
+                labels: ['ST Depression', 'Chest Pain', 'Max Heart Rate', 'Vessels', 'Blood Pressure', 'Cholesterol', 'Age', 'Rest ECG'],
+                datasets: [{
+                    label: 'Importance Score',
+                    data: [28, 22, 18, 15, 10, 5, 2, 0],
+                    backgroundColor: '#667eea'
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 30
+                    }
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>

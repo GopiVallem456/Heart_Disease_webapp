@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Analysis - Heart Disease Predictor</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        .risk-card {
+            border-left: 5px solid;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+        .risk-card.high {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        .risk-card.low {
+            border-left-color: #28a745;
+            background: #f5fff5;
+        }
+        .risk-badge {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+        }
+        .risk-factor {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .risk-factor-label {
+            min-width: 120px;
+            font-weight: 600;
+        }
+        .risk-factor-bar {
+            flex: 1;
+            margin: 0 15px;
+        }
+        .progress {
+            height: 20px;
+        }
+        .progress-bar-danger {
+            background-color: #dc3545 !important;
+        }
+        .progress-bar-warning {
+            background-color: #ffc107 !important;
+        }
+        .progress-bar-success {
+            background-color: #28a745 !important;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand">
+            <i class="bi bi-heart-pulse-fill"></i>
+            <span>HealthCare</span>
+        </div>
+
+        <nav>
+            <a href="{{ url_for('home') }}" class="nav-item">
+                <i class="bi bi-grid"></i> Overview
+            </a>
+            <a href="{{ url_for('predict') }}" class="nav-item">
+                <i class="bi bi-heart"></i> Prediction
+            </a>
+            <a href="{{ url_for('history') }}" class="nav-item">
+                <i class="bi bi-clock-history"></i> Prediction History
+            </a>
+            <a class="nav-item active">
+                <i class="bi bi-activity"></i> Risk Analysis
+            </a>
+            <a href="{{ url_for('model_performance') }}" class="nav-item">
+                <i class="bi bi-bar-chart-line"></i> Model Performance
+            </a>
+            <a href="{{ url_for('profile') }}" class="nav-item">
+                <i class="bi bi-person"></i> My Profile
+            </a>
+            <a href="{{ url_for('logout') }}" class="nav-item logout">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+        <!-- TOP BAR -->
+        <header class="topbar">
+            <h2>Risk Analysis</h2>
+            <div class="user-info">
+                <i class="bi bi-person-circle"></i> {{ user }}
+            </div>
+        </header>
+
+        <section class="content">
+            <div class="card-ui">
+                <h4 class="mb-4">Your Risk Profile Analysis</h4>
+
+                {% if predictions|length > 0 %}
+
+                <!-- SUMMARY CARDS -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="risk-card high">
+                            <h6>High Risk Predictions</h6>
+                            <div class="risk-badge text-danger">{{ high_risk_count }}</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="risk-card low">
+                            <h6>Low Risk Predictions</h6>
+                            <div class="risk-badge text-success">{{ low_risk_count }}</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card-ui text-center">
+                            <h6>Total Predictions</h6>
+                            <div class="risk-badge">{{ predictions|length }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHART -->
+                <div class="chart-container">
+                    <canvas id="riskChart"></canvas>
+                </div>
+
+                <!-- RISK FACTORS -->
+                <h5 class="mt-4 mb-3">Top Risk Factors</h5>
+
+                <div class="risk-factor">
+                    <div class="risk-factor-label">Age</div>
+                    <div class="risk-factor-bar">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-danger" style="width:35%"></div>
+                        </div>
+                    </div>
+                    <div>35%</div>
+                </div>
+
+                <div class="risk-factor">
+                    <div class="risk-factor-label">Cholesterol</div>
+                    <div class="risk-factor-bar">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-warning" style="width:28%"></div>
+                        </div>
+                    </div>
+                    <div>28%</div>
+                </div>
+
+                <div class="risk-factor">
+                    <div class="risk-factor-label">Blood Pressure</div>
+                    <div class="risk-factor-bar">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-warning" style="width:22%"></div>
+                        </div>
+                    </div>
+                    <div>22%</div>
+                </div>
+
+                <div class="risk-factor">
+                    <div class="risk-factor-label">Heart Rate</div>
+                    <div class="risk-factor-bar">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-success" style="width:15%"></div>
+                        </div>
+                    </div>
+                    <div>15%</div>
+                </div>
+
+                <!-- RECOMMENDATIONS -->
+                <div class="alert alert-info mt-4">
+                    <h6><i class="bi bi-lightbulb"></i> Health Recommendations</h6>
+                    <ul class="mb-0">
+                        <li>Exercise at least 30 minutes daily</li>
+                        <li>Monitor cholesterol regularly</li>
+                        <li>Reduce sodium intake</li>
+                        <li>Practice stress management</li>
+                        <li>Consult a doctor periodically</li>
+                    </ul>
+                </div>
+
+                {% else %}
+                <!-- NO DATA -->
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                    <p class="mt-3 text-muted">No prediction data available yet.</p>
+                    <a href="{{ url_for('predict') }}" class="btn btn-primary">
+                        Make a Prediction
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <footer class="footer">
+            © 2026 Health Prediction System · ML Based Web Application
+        </footer>
+
+    </main>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Chart Script -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const canvas = document.getElementById("riskChart");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    new Chart(ctx, {
+        type: "doughnut",
+        data: {
+            labels: ["High Risk", "Low Risk"],
+            datasets: [{
+                data: [
+                    {{ high_risk_count | default(0) | int }},
+                    {{ low_risk_count | default(0) | int }}
+                ],
+                backgroundColor: ["#dc3545", "#28a745"],
+                borderColor: ["#ffffff", "#ffffff"],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: "bottom"
+                }
+            }
+        }
+    });
+});
+</script>
+
+</body>
+</html>

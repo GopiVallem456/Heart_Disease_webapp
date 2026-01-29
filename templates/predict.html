@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Heart Disease Prediction</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+<style>
+  .form-select-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .form-control {
+    flex: 1;
+  }
+  .form-field-label {
+    position: absolute;
+    right: 12px;
+    font-size: 0.75em;
+    font-weight: 700;
+    color: #667eea;
+    background: white;
+    padding: 0 6px;
+    display: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    pointer-events: none;
+  }
+  .form-control:valid ~ .form-field-label {
+    display: block;
+  }
+  .top-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 10px;
+  }
+  .top-controls a {
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="container mt-5">
+  <div class="card-ui">
+    <div class="top-controls">
+      <div>
+        <h3>Heart Disease Prediction</h3>
+        <p class="text-muted">Select patient medical details</p>
+      </div>
+      <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-house-door"></i> Dashboard
+      </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'success' if category=='success' else ('warning' if category=='warning' else 'danger') }} mb-3">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="grid-form">
+
+      <!-- Age -->
+      <div class="form-select-wrapper">
+        <select name="age" class="form-control" required>
+          <option value="">Age</option>
+          {% for i in range(20, 101) %}
+            <option value="{{ i }}">{{ i }}</option>
+          {% endfor %}
+        </select>
+        <span class="form-field-label">Age</span>
+      </div>
+
+      <!-- Sex -->
+      <div class="form-select-wrapper">
+        <select name="sex" class="form-control" required>
+          <option value="">Gender</option>
+          <option value="1">Male</option>
+          <option value="0">Female</option>
+        </select>
+        <span class="form-field-label">Gender</span>
+      </div>
+
+      <!-- Chest Pain -->
+      <div class="form-select-wrapper">
+        <select name="cp" class="form-control" required>
+          <option value="">Chest Pain Type</option>
+          <option value="0">Typical Angina</option>
+          <option value="1">Atypical Angina</option>
+          <option value="2">Non-anginal Pain</option>
+          <option value="3">Asymptomatic</option>
+        </select>
+        <span class="form-field-label">Chest Pain</span>
+      </div>
+
+      <!-- Resting BP -->
+      <div class="form-select-wrapper">
+        <select name="trestbps" class="form-control" required>
+          <option value="">Resting Blood Pressure</option>
+          {% for i in range(90, 201, 5) %}
+            <option value="{{ i }}">{{ i }} mmHg</option>
+          {% endfor %}
+        </select>
+        <span class="form-field-label">BP</span>
+      </div>
+
+      <!-- Cholesterol -->
+      <div class="form-select-wrapper">
+        <select name="chol" class="form-control" required>
+          <option value="">Cholesterol</option>
+          {% for i in range(120, 401, 10) %}
+            <option value="{{ i }}">{{ i }} mg/dL</option>
+          {% endfor %}
+        </select>
+        <span class="form-field-label">Chol</span>
+      </div>
+
+      <!-- FBS -->
+      <div class="form-select-wrapper">
+        <select name="fbs" class="form-control" required>
+          <option value="">Fasting Blood Sugar > 120</option>
+          <option value="1">Yes</option>
+          <option value="0">No</option>
+        </select>
+        <span class="form-field-label">FBS</span>
+      </div>
+
+      <!-- Rest ECG -->
+      <div class="form-select-wrapper">
+        <select name="restecg" class="form-control" required>
+          <option value="">Rest ECG</option>
+          <option value="0">Normal</option>
+          <option value="1">ST-T Abnormality</option>
+          <option value="2">LV Hypertrophy</option>
+        </select>
+        <span class="form-field-label">ECG</span>
+      </div>
+
+      <!-- Max Heart Rate -->
+      <div class="form-select-wrapper">
+        <select name="thalach" class="form-control" required>
+          <option value="">Max Heart Rate</option>
+          {% for i in range(70, 221, 5) %}
+            <option value="{{ i }}">{{ i }} bpm</option>
+          {% endfor %}
+        </select>
+        <span class="form-field-label">Max HR</span>
+      </div>
+
+      <!-- Exercise Angina -->
+      <div class="form-select-wrapper">
+        <select name="exang" class="form-control" required>
+          <option value="">Exercise Induced Angina</option>
+          <option value="1">Yes</option>
+          <option value="0">No</option>
+        </select>
+        <span class="form-field-label">Angina</span>
+      </div>
+
+      <!-- Oldpeak -->
+      <div class="form-select-wrapper">
+        <select name="oldpeak" class="form-control" required>
+          <option value="">ST Depression (Oldpeak)</option>
+          {% for i in range(0, 61) %}
+            <option value="{{ i/10 }}">{{ i/10 }}</option>
+          {% endfor %}
+        </select>
+        <span class="form-field-label">ST Dep</span>
+      </div>
+
+      <!-- Slope -->
+      <div class="form-select-wrapper">
+        <select name="slope" class="form-control" required>
+          <option value="">Slope</option>
+          <option value="0">Upsloping</option>
+          <option value="1">Flat</option>
+          <option value="2">Downsloping</option>
+        </select>
+        <span class="form-field-label">Slope</span>
+      </div>
+
+      <!-- Major Vessels -->
+      <div class="form-select-wrapper">
+        <select name="ca" class="form-control" required>
+          <option value="">Major Vessels</option>
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+        </select>
+        <span class="form-field-label">Vessels</span>
+      </div>
+
+      <!-- Thal -->
+      <div class="form-select-wrapper">
+        <select name="thal" class="form-control" required>
+          <option value="">Thalassemia</option>
+          <option value="0">Normal</option>
+          <option value="1">Fixed Defect</option>
+          <option value="2">Reversible Defect</option>
+          <option value="3">Severe Defect</option>
+        </select>
+        <span class="form-field-label">Thal</span>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" class="btn btn-primary primary-btn" style="grid-column: 1 / -1;">
+        Predict Heart Disease Risk
+      </button>
+
+    </form>
+  </div>
+</div>
+
+<script>
+// Labels automatically show via CSS :valid pseudo-selector
+// No JavaScript needed
+</script>
+</body>
+</html>
