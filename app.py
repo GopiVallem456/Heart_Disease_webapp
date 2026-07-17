@@ -2,9 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import joblib
 from pymongo import MongoClient
 from datetime import datetime
-from pathlib import Path
-import json
-import copy
 import os
 
 # -------------------- LOAD ENV --------------------
@@ -27,166 +24,60 @@ MONGO_URI = os.environ.get("MONGO_URI")
 client = None
 users_collection = None
 predictions_collection = None
-local_db = None
-
-
-class LocalCursor:
-    def __init__(self, documents):
-        self._documents = documents
-
-    def sort(self, key, direction=-1):
-        reverse = direction < 0
-        return LocalCursor(sorted(self._documents, key=lambda item: item.get(key), reverse=reverse))
-
-    def __iter__(self):
-        return iter(self._documents)
-
-
-class LocalCollection:
-    def __init__(self, database, name):
-        self.database = database
-        self.name = name
-
-    def create_index(self, *args, **kwargs):
-        return None
-
-    def find_one(self, query):
-        for document in self.database.read()[self.name]:
-            if all(document.get(key) == value for key, value in query.items()):
-                return copy.deepcopy(document)
-        return None
-
-    def insert_one(self, document):
-        stored_document = self.database.prepare_for_save(document)
-        data = self.database.read()
-        data[self.name].append(stored_document)
-        self.database.write(data)
-        return stored_document
-
-    def update_one(self, query, update):
-        data = self.database.read()
-        for document in data[self.name]:
-            if all(document.get(key) == value for key, value in query.items()):
-                if "$set" in update:
-                    for key, value in update["$set"].items():
-                        document[key] = self.database.prepare_value_for_save(key, value)
-                    self.database.write(data)
-                return document
-        return None
-
-    def find(self, query):
-        matched = [
-            copy.deepcopy(document)
-            for document in self.database.read()[self.name]
-            if all(document.get(key) == value for key, value in query.items())
-        ]
-        return LocalCursor(matched)
-
-
-class LocalDatabase:
-    def __init__(self, file_path):
-        self.file_path = Path(file_path)
-        self.file_path.parent.mkdir(parents=True, exist_ok=True)
-        self._ensure_file()
-
-    def _ensure_file(self):
-        if not self.file_path.exists():
-            self.write({"users": [], "predictions": []})
-
-    def read(self):
-        self._ensure_file()
-        with self.file_path.open("r", encoding="utf-8") as file_handle:
-            data = json.load(file_handle)
-
-        data.setdefault("users", [])
-        data.setdefault("predictions", [])
-
-        for collection_name in ("users", "predictions"):
-            for document in data[collection_name]:
-                timestamp = document.get("timestamp")
-                if isinstance(timestamp, str):
-                    try:
-                        document["timestamp"] = datetime.fromisoformat(timestamp)
-                    except ValueError:
-                        pass
-        return data
-
-    def write(self, data):
-        serializable = copy.deepcopy(data)
-        for collection_name in ("users", "predictions"):
-            for document in serializable[collection_name]:
-                timestamp = document.get("timestamp")
-                if isinstance(timestamp, datetime):
-                    document["timestamp"] = timestamp.isoformat()
-
-        with self.file_path.open("w", encoding="utf-8") as file_handle:
-            json.dump(serializable, file_handle, indent=2)
-
-    def prepare_value_for_save(self, key, value):
-        if isinstance(value, datetime):
-            return value.isoformat()
-        return value
-
-    def prepare_for_save(self, document):
-        stored_document = copy.deepcopy(document)
-        for key, value in stored_document.items():
-            stored_document[key] = self.prepare_value_for_save(key, value)
-        return stored_document
-
-    def collection(self, name):
-        return LocalCollection(self, name)
+mongo_init_failed = False
 
 
 def get_db_collections():
     """Initialize MongoDB connection on first use"""
-    global client, users_collection, predictions_collection, local_db
+    global client, users_collection, predictions_collection, mongo_init_failed
 
-    if users_collection is None:
-        if not MONGO_URI:
-            print("⚠️ MONGO_URI not set - using local JSON storage fallback")
-            local_db = LocalDatabase(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "local_db.json"))
-            users_collection = local_db.collection("users")
-            predictions_collection = local_db.collection("predictions")
-            return users_collection, predictions_collection
+    if users_collection is not None and predictions_collection is not None:
+        return users_collection, predictions_collection
 
+    if mongo_init_failed:
+        return None, None
+
+    if not MONGO_URI:
+        print("❌ MONGO_URI not set. MongoDB Atlas is required.")
+        mongo_init_failed = True
+        return None, None
+
+    try:
+        # Increase timeout and add connection options for better reliability
+        client = MongoClient(
+            MONGO_URI,
+            serverSelectionTimeoutMS=10000,  # 10 seconds timeout
+            connectTimeoutMS=10000,
+            socketTimeoutMS=10000
+        )
+        # Test connection
+        client.admin.command("ping")
+
+        db = client["heart_app"]
+        users_collection = db["users"]
+        predictions_collection = db["predictions"]
+
+        # Create index if it doesn't exist
         try:
-            # Increase timeout and add connection options for better reliability
-            client = MongoClient(
-                MONGO_URI, 
-                serverSelectionTimeoutMS=10000,  # 10 seconds timeout
-                connectTimeoutMS=10000,
-                socketTimeoutMS=10000
-            )
-            # Test connection
-            client.admin.command("ping")
-            
-            db = client["heart_app"]
-            users_collection = db["users"]
-            predictions_collection = db["predictions"]
+            users_collection.create_index("username", unique=True)
+        except Exception:
+            pass  # Index might already exist
 
-            # Create index if it doesn't exist
-            try:
-                users_collection.create_index("username", unique=True)
-            except Exception:
-                pass  # Index might already exist
-            
-            print("✅ MongoDB connected successfully")
+        print("✅ MongoDB connected successfully")
 
-        except Exception as e:
-            import traceback
+    except Exception as e:
+        import traceback
 
-            print("\n========== MONGODB ERROR ==========")
-            print("Error:", e)
-            traceback.print_exc()
-            print("===================================\n")
+        print("\n========== MONGODB ERROR ==========")
+        print("Error:", e)
+        traceback.print_exc()
+        print("===================================\n")
 
-            client = None
-            local_db = LocalDatabase(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "local_db.json")
-            )
-            users_collection = local_db.collection("users")
-            predictions_collection = local_db.collection("predictions")
-            return users_collection, predictions_collection
+        client = None
+        users_collection = None
+        predictions_collection = None
+        mongo_init_failed = True
+        return None, None
 
     return users_collection, predictions_collection
 
