@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import joblib
 from pymongo import MongoClient
+from pymongo.errors import DuplicateKeyError, PyMongoError
 from datetime import datetime
 import os
 
@@ -15,68 +16,62 @@ app = Flask(
     static_folder="static"         # ✅ FIXED
 )
 
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+app.secret_key = os.environ.get("SECRET_KEY")
+if not app.secret_key:
+    raise RuntimeError("SECRET_KEY is missing from .env")
 
 
 # -------------------- MONGODB CONFIG --------------------
-MONGO_URI = os.environ.get("MONGO_URI")
+MONGO_URI = os.environ.get("MONGO_URI") or os.environ.get("MONGODB_URI")
 
 client = None
 users_collection = None
 predictions_collection = None
-mongo_init_failed = False
+mongo_last_error = None
 
 
 def get_db_collections():
     """Initialize MongoDB connection on first use"""
-    global client, users_collection, predictions_collection, mongo_init_failed
+    global client, users_collection, predictions_collection, mongo_last_error
 
     if users_collection is not None and predictions_collection is not None:
         return users_collection, predictions_collection
 
-    if mongo_init_failed:
-        return None, None
-
     if not MONGO_URI:
-        print("❌ MONGO_URI not set. MongoDB Atlas is required.")
-        mongo_init_failed = True
+        mongo_last_error = "MONGO_URI is not configured"
+        print("MongoDB unavailable: MONGO_URI is not configured.")
         return None, None
 
     try:
-        # Increase timeout and add connection options for better reliability
         client = MongoClient(
             MONGO_URI,
-            serverSelectionTimeoutMS=10000,  # 10 seconds timeout
-            connectTimeoutMS=10000,
-            socketTimeoutMS=10000
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+            socketTimeoutMS=5000,
         )
-        # Test connection
         client.admin.command("ping")
 
         db = client["heart_app"]
         users_collection = db["users"]
         predictions_collection = db["predictions"]
 
-        # Create index if it doesn't exist
-        try:
-            users_collection.create_index("username", unique=True)
-        except Exception:
-            pass  # Index might already exist
+        users_collection.create_index("username", unique=True)
 
-        print("✅ MongoDB connected successfully")
+        mongo_last_error = None
+        print("MongoDB connected successfully.")
 
-    except Exception as e:
+    except PyMongoError as e:
         import traceback
 
+        mongo_last_error = str(e)
         print("\n========== MONGODB ERROR ==========")
-        print("Error:", e)
+        print("Error:", mongo_last_error)
         traceback.print_exc()
         print("===================================\n")
 
         client = None
         users_collection = None
         predictions_collection = None
-        mongo_init_failed = True
         return None, None
 
     return users_collection, predictions_collection
@@ -88,9 +83,9 @@ model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "heart_dis
 
 try:
     model = joblib.load(model_path)
-    print("✅ ML model loaded")
+    print("ML model loaded.")
 except Exception as e:
-    print(f"⚠️ Model loading failed: {e}")
+    print(f"Model loading failed: {e}")
 
 
 # -------------------- ROUTES --------------------
@@ -147,16 +142,17 @@ def register():
             flash("Database unavailable", "danger")
             return render_template("register.html")
 
-        existing = users_coll.find_one({"username": username})
-        if existing:
-            # Treat re-register as password reset for simplicity
-            users_coll.update_one(
-                {"_id": existing["_id"]},
-                {"$set": {"password": password, "updated_at": datetime.now()}}
-            )
-            flash("User already existed – password updated. Please login.", "info")
-            return redirect(url_for("login"))
-        else:
+        try:
+            existing = users_coll.find_one({"username": username})
+            if existing:
+                # Treat re-register as password reset for simplicity
+                users_coll.update_one(
+                    {"_id": existing["_id"]},
+                    {"$set": {"password": password, "updated_at": datetime.now()}}
+                )
+                flash("User already existed - password updated. Please login.", "info")
+                return redirect(url_for("login"))
+
             users_coll.insert_one({
                 "username": username,
                 "password": password,
@@ -164,6 +160,10 @@ def register():
             })
             flash("Registration successful! Please login.", "success")
             return redirect(url_for("login"))
+        except DuplicateKeyError:
+            flash("An account with that email already exists.", "warning")
+        except PyMongoError:
+            flash("Database unavailable. Please try again later.", "danger")
 
     return render_template("register.html")
 
